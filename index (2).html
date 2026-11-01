@@ -1,0 +1,143 @@
+<HTML>
+  <HEAD>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/5.1/esri/themes/light/main.css" /> 
+    <script type="module" src="https://js.arcgis.com/5.1/"></script>
+  </HEAD>
+  <BODY>
+    <DIV class="container">
+      <header>
+        <img src="denver-skyline.png" 
+        style="display: block; width: 100%; height: 100px; object-fit: cover; object-position: center;"
+        alt="Denver Skyline">
+      </header>
+      <!-- HTML for left sidebar -->
+      <aside class="sidebar-l"> 
+        <strong>Layer Visibility</strong>
+        <aside class="sidebar-l-top">
+        
+        <div>
+            <arcgis-layer-list reference-element="myMap"></arcgis-layer-list>
+        </div>
+        
+        <strong>LEGEND</strong>
+        <div>
+            <arcgis-legend reference-element="myMap"></arcgis-legend>
+        </div>
+    </aside>
+      
+      <main>
+        <!-- Reference your web map id -->
+        <arcgis-map
+         item-id="e312b7ef09e6408d8c2212587119f6e4"
+         center="-104.95, 39.75" zoom="14"
+          id="myMap" popup-disabled>
+
+         <arcgis-zoom slot="top-left"></arcgis-zoom>
+
+        </arcgis-map>
+        
+      </main>
+        
+        <script type="module">
+          // Import specific JS libraries we need for this analysis
+          const [Map, FeatureLayer, Graphic, GraphicsLayer, MapView, Extent] = await
+          $arcgis.import([
+              "@arcgis/core/Map.js",
+              "@arcgis/core/layers/FeatureLayer.js",
+              "@arcgis/core/Graphic.js",
+              "@arcgis/core/layers/GraphicsLayer.js",
+              "@arcgis/core/views/MapView.js",
+              "@arcgis/core/geometry/Extent.js"
+          ]);
+        
+          const featureLayer = new FeatureLayer({
+          portalItem: {
+          id:"79f711ce2e2147c18e7d1bcc583dec3e"
+          },
+          outFields: ["*"],
+          });
+
+          const viewElement = document.querySelector("arcgis-map");
+          await viewElement.viewOnReady();
+          const map = viewElement.map;
+
+          // 1. Define a renderer for how the graphics should look
+          const highlightRenderer = {
+              type: "simple",
+              symbol: {
+                  type: "simple-marker",
+                  color: "red",
+                  size: "10px",
+                  outline: { color: "white", width: 1 }
+              }
+          };
+
+          // 2. Create the client-side FeatureLayer
+          const graphicsLayer = new FeatureLayer({
+              title: "Highlighted Stores",
+              source: [],
+              objectIdField: "OBJECTID",
+              fields: [{
+                  name: "OBJECTID",
+                  type: "oid"
+              }],
+              geometryType: "point",
+              renderer: highlightRenderer
+          });
+
+          map.add(graphicsLayer);
+          const view = viewElement.view;
+
+          viewElement.addEventListener("arcgisViewClick", (event) => {
+              
+              // Extract mapPoint from event.detail
+          const { mapPoint } = event.detail;
+
+          const queryExtent = view.extent.clone();
+
+          const query = featureLayer.createQuery();
+          query.geometry = queryExtent;
+          query.spatialRelationship = "intersects";
+          query.returnGeometry = true;
+          query.outFields = ["name"];
+
+          let names = "";
+         
+
+          featureLayer.queryFeatures(query).then((results) => {
+              console.log("Found " + results.features.length + " stores within the bounding box.");
+
+              results.features.forEach((feature) => {
+
+                // 1. Give each feature an OBJECTID
+                feature.attributes.OBJECTID = feature.attributes.OBJECTID || Math.floor(Math.random() * 1000000);
+
+                // 2. Use applyEdits to push the graphics to the layer
+                graphicsLayer.applyEdits({
+                addFeatures: results.features
+            });
+
+            const attributes = feature.attributes;
+            const featureName = attributes["name"];
+            names = names + featureName + ", ";
+
+                console.log("Feature name: " + featureName);
+            });
+
+            console.log("Names of features found " + names);
+
+        }).catch((error) => {
+            console.error("Query failed: ", error);
+        });
+
+    });
+        </script>  
+       
+        <footer>
+        Grocery icon from www.flaticon.com licensed by CC 3.0
+        </footer>
+   
+    </div>
+  </BODY>
+</HTML>
